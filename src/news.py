@@ -1,4 +1,5 @@
 import requests
+import re
 import os
 import datetime
 import json
@@ -12,8 +13,9 @@ import urllib.request
 # def news():
 #     for post in os.listdir("data/out/json/"):
 #         os.remove("data/out/json/"+post)
-#     for image in os.listdir("data/out/articles/"):
-#         os.remove("data/out/articles/"+image)
+#     for dirs in os.listdir("data/out/articles/"):
+#         for img in dirs:
+#             os.remove(f"data/out/articles/{dirs}/{img}/")
 #     print(colored(f"News files from {(datetime.date.today() - datetime.timedelta(1)).strftime("%d %b %Y")} deleted", "red"))
 #     print(colored("Started news", "blue"))
 #     process = CrawlerProcess(get_project_settings())
@@ -24,7 +26,7 @@ def get_mains():
 
     articles = []
 
-    with open(f"data/out/json/news-output-{datetime.date.today()}-p.json") as f:
+    with open(f"data/out/json/news-output-{datetime.date.today()}.json") as f:
         for line in f:
             articles.append(json.loads(line))
 
@@ -50,35 +52,35 @@ def get_mains():
     #         content = response.json()
     #         article["points"] = content['choices'][0]['message']['content']
 
-    with open(f"data/out/json/news-output-{datetime.date.today()}-p.json", 'w') as f:
+    with open(f"data/out/json/news-output-{datetime.date.today()}.json", 'w') as f:
         f.write('')
     
-    with open(f"data/out/json/news-output-{datetime.date.today()}-p.json", 'a') as f:
+    with open(f"data/out/json/news-output-{datetime.date.today()}.json", 'a') as f:
         for article in articles:
             f.write(json.dumps(article) + '\n')
 
     return articles
 
-def create_slide():
+def clean_data():
     
     articles = get_mains()
 
-    def download_image(url, name):
+    def download_image(url, name, folder):
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
         req = urllib.request.Request(url, headers=headers)
         try:
             with urllib.request.urlopen(req) as response:
-                with open(f'data/out/images/{name}.jpg', 'wb') as file:
+                with open(f'data/out/articles/{folder}/{name}.jpg', 'wb') as file:
                     file.write(response.read())
         except urllib.error.HTTPError as e:
             print(colored(f"Error occured {e} while downloading {url}", "red"))
 
     index = 0
     for article in articles:
+        title = re.sub(r'[\/:*?"<>|]', '_', article["title"][0])
+        os.mkdir(f"data/out/articles/{title}")
         for image in article["image-links"]:
             name = f"{index}"
             if index%2!=0: name+="-icon"
-            download_image(image, name)
+            download_image(image, name, title)
             index += 1
-
-create_slide()
