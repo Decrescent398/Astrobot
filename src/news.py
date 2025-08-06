@@ -6,21 +6,22 @@ import json
 from termcolor import colored
 from PIL import Image
 import urllib.request
-# from scrapy.crawler import CrawlerProcess
-# from scrapy.utils.project import get_project_settings
-# from particlescraper.particlescraper.spiders.newsscraper import NewsScraper
+from scrapy.crawler import CrawlerProcess
+from scrapy.utils.project import get_project_settings
+from particlescraper.particlescraper.spiders.newsscraper import NewsScraper
 
-# def news():
-#     for post in os.listdir("data/out/json/"):
-#         os.remove("data/out/json/"+post)
-#     for dirs in os.listdir("data/out/articles/"):
-#         for img in dirs:
-#             os.remove(f"data/out/articles/{dirs}/{img}/")
-#     print(colored(f"News files from {(datetime.date.today() - datetime.timedelta(1)).strftime("%d %b %Y")} deleted", "red"))
-#     print(colored("Started news", "blue"))
-#     process = CrawlerProcess(get_project_settings())
-#     process.crawl(NewsScraper)
-#     process.start()
+def news():
+    for post in os.listdir("data/out/json/"):
+        os.remove("data/out/json/"+post)
+    for dirs in os.listdir("data/out/articles/"):
+        for img in dirs:
+            os.remove(f"data/out/articles/{dirs}/{img}/")
+    print(colored(f"News files from {(datetime.date.today() - datetime.timedelta(1)).strftime("%d %b %Y")} deleted", "red"))
+    print(colored("Started news", "blue"))
+    process = CrawlerProcess(get_project_settings())
+    process.crawl(NewsScraper)
+    process.start()
+    clean_data()
 
 def get_mains():
 
@@ -51,9 +52,6 @@ def get_mains():
     #     else:
     #         content = response.json()
     #         article["points"] = content['choices'][0]['message']['content']
-
-    with open(f"data/out/json/news-output-{datetime.date.today()}.json", 'w') as f:
-        f.write('')
     
     with open(f"data/out/json/news-output-{datetime.date.today()}.json", 'a') as f:
         for article in articles:
@@ -79,6 +77,11 @@ def clean_data():
     for article in articles:
         title = re.sub(r'[\/:*?"<>|]', '_', article["title"][0])
         os.mkdir(f"data/out/articles/{title}")
+        with open(f"data/out/articles/{title}/content.txt", 'a') as f:
+            f.write(article["title"][0])
+            for line in article["points"]:
+                f.write(line+'\n')
+
         for image in article["image-links"]:
             name = f"{index}"
             if index%2!=0: name+="-icon"

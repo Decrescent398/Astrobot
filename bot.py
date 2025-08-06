@@ -10,6 +10,8 @@ from src.tasks import *
 from src.posts import *
 from src.news import *
 
+news()
+
 def run_news():
     while True:
         schedule.run_pending()
