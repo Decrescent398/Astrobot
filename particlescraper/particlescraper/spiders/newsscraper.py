@@ -1,6 +1,5 @@
 import scrapy
-import json
-import datetime
+import datetime, re, json
 
 class NewsScraper(scrapy.Spider):
     name = 'particle'
@@ -30,7 +29,7 @@ class NewsScraper(scrapy.Spider):
         for items in response.css('div.container'):
             data.append(
             {
-            'title': items.css('div.cluster-headline h1').xpath('normalize-space(.)').getall(),
+            'title': [re.sub(r'[\/:*?"<>|]', '_', title) for title in items.css('div.cluster-headline h1').xpath('normalize-space(.)').getall()],
             'points': items.css('ul li').xpath('normalize-space(.)').getall(),
             'image-links': [svg.attrib['xlink:href'] for svg in items.css('svg.image-pile g image')]
             }

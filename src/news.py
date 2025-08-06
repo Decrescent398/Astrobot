@@ -1,10 +1,7 @@
-import requests
-import re
-import os
-import datetime
-import json
+import requests, re, os, shutil, datetime, json
 from pathlib import Path
 from termcolor import colored
+import magic
 from PIL import Image
 import urllib.request
 from scrapy.crawler import CrawlerProcess
@@ -13,20 +10,21 @@ from particlescraper.particlescraper.spiders.newsscraper import NewsScraper
 
 # Output directory paths
 OUTPUT_FOLDER = Path("data/out/")
-JSON_DATA_PATH = OUTPUT_FOLDER / Path("/json")
-ARTICLE_DATA_PATH = OUTPUT_FOLDER / Path("/articles")
+JSON_DATA_PATH = OUTPUT_FOLDER / "json"
+ARTICLE_DATA_PATH = OUTPUT_FOLDER / "articles"
 
 
 def news():
     """Main news function that cleans old files and starts news scraping."""
     # Clean old JSON files
-    for json_file in os.listdir(OUTPUT_FOLDER):
-        os.remove(JSON_DATA_PATH / Path(json_file))
+    if os.listdir(JSON_DATA_PATH):
+        for json_file in os.listdir(JSON_DATA_PATH):
+            os.remove(JSON_DATA_PATH / json_file)
     
     # Clean old article directories
-    for article_dir in os.listdir(ARTICLE_DATA_PATH):
-        for item in article_dir:
-            os.remove(ARTICLE_DATA_PATH / Path(f"{article_dir}/{item}/"))
+    if os.listdir(ARTICLE_DATA_PATH):
+        for article_dir in os.listdir(ARTICLE_DATA_PATH):
+            shutil.rmtree(ARTICLE_DATA_PATH / article_dir)
     
     yesterday_date = (datetime.date.today() - datetime.timedelta(1)).strftime("%d %b %Y")
     print(colored(f"News files from {yesterday_date} deleted", "red"))
@@ -46,7 +44,7 @@ def get_mains():
     today_date = datetime.date.today()
     json_filename = f"news-output-{today_date}.json"
     
-    with open(JSON_DATA_PATH / Path(json_filename)) as json_file:
+    with open(JSON_DATA_PATH / json_filename) as json_file:
         for line in json_file:
             news_articles.append(json.loads(line))
 
@@ -75,7 +73,7 @@ def get_mains():
     print(colored("Finished AI highlights", "green"))
     
     # Write processed articles back to file
-    with open(JSON_DATA_PATH / Path(json_filename), 'a') as output_file:
+    with open(JSON_DATA_PATH / json_filename, 'a') as output_file:
         for article in news_articles:
             output_file.write(json.dumps(article) + '\n')
 
@@ -95,7 +93,10 @@ def clean_data():
         
         try:
             with urllib.request.urlopen(image_request) as response:
-                image_path = ARTICLE_DATA_PATH / Path(f"{article_folder}/{image_name}.jpg")
+                if image_name.endswith("-icon"):
+                    image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.ico"
+                else:
+                    image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.jpeg"
                 with open(image_path, 'wb') as image_file:
                     image_file.write(response.read())
         except urllib.error.HTTPError as error:
@@ -106,8 +107,7 @@ def clean_data():
     image_index = 0
     for article in news_articles:
         # Clean title for folder name (remove invalid characters)
-        clean_title = re.sub(r'[\/:*?"<>|]', '_', article["title"][0])
-        article_folder_path = ARTICLE_DATA_PATH / Path(clean_title)
+        article_folder_path = ARTICLE_DATA_PATH / article["title"][0]
         os.mkdir(article_folder_path)
         
         # Write article content to file
@@ -122,5 +122,14 @@ def clean_data():
             image_name = f"{image_index}"
             if image_index % 2 != 0:
                 image_name += "-icon"
-            download_image(image_link, image_name, clean_title)
+            download_image(image_link, image_name, article["title"][0])
             image_index += 1
+
+# def make_slides():
+#     mime = magic.Magic(mime=True)
+
+#     for article_dir in os.listdir(ARTICLE_DATA_PATH):
+#         for item in article_dir:
+#             filetype = mime.from_file(ARTICLE_DATA_PATH / f"{article_dir}/{item}/")
+#             if filetype == "image/jpeg":
+#                 if filetype.endswith("-icon")

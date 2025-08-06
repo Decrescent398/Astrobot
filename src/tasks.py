@@ -1,6 +1,5 @@
 import datetime
 
-
 def create_task(member_name: str, task_type: str):
     """Create a new task for a member with appropriate deadline based on task type."""
     task_deadline = None

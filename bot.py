@@ -11,7 +11,6 @@ from src.tasks import *
 from src.posts import *
 from src.news import *
 
-
 def run_news_scheduler():
     """Run the news scheduler in a separate thread."""
     while True:

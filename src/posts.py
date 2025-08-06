@@ -1,7 +1,5 @@
-import re
-# import os
+import re, os, requests
 # from PIL import Image
-# import requests
 # from bs4 import BeautifulSoup
 # from googleapiclient.discovery import build
 # from google.oauth2 import service_account
