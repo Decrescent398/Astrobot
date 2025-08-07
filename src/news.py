@@ -1,12 +1,12 @@
-import requests, re, os, shutil, datetime, json
+import requests, os, shutil, datetime, json
 from pathlib import Path
 from termcolor import colored
-import magic
+import PIL
 from PIL import Image
 import urllib.request
-from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
-from particlescraper.particlescraper.spiders.newsscraper import NewsScraper
+# from scrapy.crawler import CrawlerProcess
+# from scrapy.utils.project import get_project_settings
+# from particlescraper.particlescraper.spiders.newsscraper import NewsScraper
 
 # Output directory paths
 OUTPUT_FOLDER = Path("data/out/")
@@ -31,9 +31,9 @@ def news():
     print(colored("Started news", "green"))
     
     # Start news scraping process
-    crawler_process = CrawlerProcess(get_project_settings())
-    crawler_process.crawl(NewsScraper)
-    crawler_process.start()
+    # crawler_process = CrawlerProcess(get_project_settings())
+    # crawler_process.crawl(NewsScraper)
+    # crawler_process.start()
     clean_data()
 
 
@@ -71,6 +71,10 @@ def get_mains():
     #         article["points"] = content['choices'][0]['message']['content']
 
     print(colored("Finished AI highlights", "green"))
+
+    #Clear file
+    with open(JSON_DATA_PATH / json_filename, 'w') as output_file:
+        output_file.write('')
     
     # Write processed articles back to file
     with open(JSON_DATA_PATH / json_filename, 'a') as output_file:
@@ -94,9 +98,9 @@ def clean_data():
         try:
             with urllib.request.urlopen(image_request) as response:
                 if image_name.endswith("-icon"):
-                    image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.ico"
+                    image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.png"
                 else:
-                    image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.jpeg"
+                    image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.png"
                 with open(image_path, 'wb') as image_file:
                     image_file.write(response.read())
         except urllib.error.HTTPError as error:
@@ -104,11 +108,16 @@ def clean_data():
 
     print(colored("Starting clean", "green"))
 
-    image_index = 0
     for article in news_articles:
-        # Clean title for folder name (remove invalid characters)
-        article_folder_path = ARTICLE_DATA_PATH / article["title"][0]
-        os.mkdir(article_folder_path)
+
+        image_index = 0
+
+        try:
+            article_folder_path = ARTICLE_DATA_PATH / article["title"][0]
+            os.mkdir(article_folder_path)
+        except FileExistsError:
+            print(colored(f"Ignoring repeated article {article["title"][0]}", "red"))
+            continue
         
         # Write article content to file
         content_file_path = article_folder_path / "content.txt"
@@ -125,11 +134,61 @@ def clean_data():
             download_image(image_link, image_name, article["title"][0])
             image_index += 1
 
-# def make_slides():
-#     mime = magic.Magic(mime=True)
+def make_slides():
 
-#     for article_dir in os.listdir(ARTICLE_DATA_PATH):
-#         for item in article_dir:
-#             filetype = mime.from_file(ARTICLE_DATA_PATH / f"{article_dir}/{item}/")
-#             if filetype == "image/jpeg":
-#                 if filetype.endswith("-icon")
+    for article_dir in os.listdir(ARTICLE_DATA_PATH):
+        dirs = os.listdir(ARTICLE_DATA_PATH / article_dir)
+        for index, item in enumerate(dirs):
+
+            try:
+                filepath = ARTICLE_DATA_PATH / f"{article_dir}/{item}"
+            except FileNotFoundError:
+                continue
+
+            try:
+                next_fp = ARTICLE_DATA_PATH / f"{article_dir}/{dirs[index+1]}"
+            except (IndexError, FileNotFoundError):
+                continue
+
+            if "icon" not in item:
+                try:
+                    img = Image.open(filepath)
+                except PIL.UnidentifiedImageError:
+                    continue
+                width, height = img.size
+                if width > height:
+                    box = ((width - height) / 2, 0, (width + height) / 2, height)
+                else:
+                    box = (0, (height - width) / 2, width, (height + width) / 2)
+                img = img.crop(box)
+                width, height = img.size
+                if "icon" in dirs[index+1]:
+                    try:
+                        ico = Image.open(next_fp)
+                    except PIL.UnidentifiedImageError:
+                        continue
+                    ico = ico.resize((48,48))
+                    box = (8, 8, 56, 56)
+                    img.paste(ico, box)
+                img = img.resize((1080, 1080))
+                img.save(filepath, "PNG")
+
+    print(colored(f"Finished icon overlay and blur", "green"))
+
+    for article_dir in os.listdir(ARTICLE_DATA_PATH):
+        for item in os.listdir(ARTICLE_DATA_PATH / article_dir):
+            if "icon" in item:
+                os.remove(ARTICLE_DATA_PATH / article_dir / item)
+    
+    print(colored("Deleted extra icons", "green"))
+
+    for article_dir in os.listdir(ARTICLE_DATA_PATH):
+        if len(os.listdir(ARTICLE_DATA_PATH / article_dir)) != 6:
+            loop = 6 - len(os.listdir(ARTICLE_DATA_PATH / article_dir))
+            while loop != 0:
+                blank = Image.new('RGBA', (1080, 1080), color='black')
+                blank.save(ARTICLE_DATA_PATH / article_dir / f'blank{6-loop}.png')
+                loop -= 1
+    
+    print(colored("Created blanks", "green"))
+

@@ -128,7 +128,6 @@ async def handle_view_task(ctx):
 class ButtonView(discord.ui.View):
     def __init__(self, ctx, link):
         super().__init__(timeout=None)
-        self.state = "review"
         self.author = ctx.author
         self.link = link
         self.embed = discord.Embed(
