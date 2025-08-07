@@ -2,7 +2,7 @@ import requests, os, shutil, datetime, json
 from pathlib import Path
 from termcolor import colored
 import PIL
-from PIL import Image
+from PIL import Image, ImageFilter
 import urllib.request
 # from scrapy.crawler import CrawlerProcess
 # from scrapy.utils.project import get_project_settings
@@ -157,11 +157,13 @@ def make_slides():
                     continue
                 width, height = img.size
                 if width > height:
-                    box = ((width - height) / 2, 0, (width + height) / 2, height)
-                else:
-                    box = (0, (height - width) / 2, width, (height + width) / 2)
-                img = img.crop(box)
-                width, height = img.size
+                    box = (int((width - height) / 2), 0, int((width + height) / 2), height)
+                elif height > width:
+                    box = (0, int((height - width) / 2), width, int((height + width) / 2))
+                try:
+                    img = img.crop(box)
+                except UnboundLocalError:
+                    pass
                 if "icon" in dirs[index+1]:
                     try:
                         ico = Image.open(next_fp)
@@ -171,6 +173,9 @@ def make_slides():
                     box = (8, 8, 56, 56)
                     img.paste(ico, box)
                 img = img.resize((1080, 1080))
+                blur_box = img.crop((0, 810, 1080, 1080))
+                blur_region = blur_box.filter(ImageFilter.GaussianBlur(radius=5))
+                img.paste(blur_region, (0, 810, 1080, 1080))
                 img.save(filepath, "PNG")
 
     print(colored(f"Finished icon overlay and blur", "green"))
@@ -192,3 +197,9 @@ def make_slides():
     
     print(colored("Created blanks", "green"))
 
+    # for article_dir in os.listdir(ARTICLE_DATA_PATH):
+    #     f = open(ARTICLE_DATA_PATH / article_dir / "content.txt", 'r')
+    #     for image, content in zip(os.listdir(ARTICLE_DATA_PATH / article_dir)[:-1], f.readlines()[:-1]):
+
+clean_data()           
+make_slides()
