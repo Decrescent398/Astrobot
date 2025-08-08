@@ -2,7 +2,7 @@ import requests, os, shutil, datetime, json
 from pathlib import Path
 from termcolor import colored
 import PIL
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageDraw, ImageFont
 import urllib.request
 # from scrapy.crawler import CrawlerProcess
 # from scrapy.utils.project import get_project_settings
@@ -30,11 +30,11 @@ def news():
     print(colored(f"News files from {yesterday_date} deleted", "red"))
     print(colored("Started news", "green"))
     
-    # Start news scraping process
+    # #Start news scraping process
     # crawler_process = CrawlerProcess(get_project_settings())
     # crawler_process.crawl(NewsScraper)
     # crawler_process.start()
-    clean_data()
+    # clean_data()
 
 
 def get_mains():
@@ -96,14 +96,14 @@ def clean_data():
         image_request = urllib.request.Request(image_url, headers=request_headers)
         
         try:
-            with urllib.request.urlopen(image_request) as response:
+            with urllib.request.urlopen(image_request, timeout=10) as response:
                 if image_name.endswith("-icon"):
                     image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.png"
                 else:
                     image_path = ARTICLE_DATA_PATH / f"{article_folder}/{image_name}.png"
                 with open(image_path, 'wb') as image_file:
                     image_file.write(response.read())
-        except urllib.error.HTTPError as error:
+        except (urllib.error.HTTPError, urllib.error.URLError) as error:
             print(colored(f"Error occurred {error} while downloading {image_url}", "red"))
 
     print(colored("Starting clean", "green"))
@@ -133,6 +133,8 @@ def clean_data():
                 image_name += "-icon"
             download_image(image_link, image_name, article["title"][0])
             image_index += 1
+    
+    print(colored("Finshed clean", "green"))
 
 def make_slides():
 
@@ -197,9 +199,51 @@ def make_slides():
     
     print(colored("Created blanks", "green"))
 
-    # for article_dir in os.listdir(ARTICLE_DATA_PATH):
-    #     f = open(ARTICLE_DATA_PATH / article_dir / "content.txt", 'r')
-    #     for image, content in zip(os.listdir(ARTICLE_DATA_PATH / article_dir)[:-1], f.readlines()[:-1]):
+    def get_font(font_size=36):
+        return ImageFont.truetype("Pillow/Tests/fonts/FreeMonoBold.ttf", font_size) #37px length per line, width = 22px (0.6*font lenght estimate)
 
-clean_data()           
+    for article_dir in os.listdir(ARTICLE_DATA_PATH):
+        f = open(ARTICLE_DATA_PATH / article_dir / "content.txt", 'r')
+        f.seek(0)
+        all_lines = f.readlines()[:-1]
+        for image, line in zip(os.listdir(ARTICLE_DATA_PATH / article_dir)[:-1], all_lines):
+            try:
+                img = Image.open(ARTICLE_DATA_PATH / article_dir / image)
+            except PIL.UnidentifiedImageError:
+                continue
+            drw = ImageDraw.Draw(img)
+            if "blank" in image:
+                start_newline = 0
+                y = 0
+                x = 20
+                while start_newline < len(line):
+                    if len(line[start_newline:start_newline+46].split(' ')[:-1]) > 1:
+                        threshold = line[start_newline:start_newline+46].split(' ')[:-1]
+                    else:
+                        threshold = line[start_newline:start_newline+46].split(' ')
+                    this_line = " ".join(threshold) #46 max chars (40+40 padding, 1000 box-space/ 22 width per letter)
+                    x_offset = int((1080 - (len(this_line) * 22))/2)
+                    drw.text((x+x_offset, y), this_line.lstrip(), font=get_font(), spacing=2, align='justify')
+                    start_newline += len(this_line)
+                    y += 37
+            else:
+                start_newline = 0
+                y = 810
+                x = 20
+                while start_newline < len(line):
+                    if len(line[start_newline:start_newline+46].split(' ')[:-1]) > 1:
+                        threshold = line[start_newline:start_newline+46].split(' ')[:-1]
+                    else:
+                        threshold = line[start_newline:start_newline+46].split(' ')
+                    this_line = " ".join(threshold) #46 max chars (40+40 padding, 1000 box-space/ 22 width per letter
+                    x_offset = int((1080 - (len(this_line) * 22))/2)
+                    drw.text((x+x_offset, y), this_line.lstrip(), font=get_font(), spacing=2, align='justify')
+                    start_newline += len(this_line)
+                    y += 37
+            img.save(ARTICLE_DATA_PATH / article_dir / image)
+        f.close()
+
+    print(colored("Finished text overlay", "green"))
+
+clean_data()
 make_slides()

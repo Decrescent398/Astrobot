@@ -11,12 +11,13 @@ from src.tasks import *
 from src.posts import *
 from src.news import *
 
+news()
+
 def run_news_scheduler():
     """Run the news scheduler in a separate thread."""
     while True:
         schedule.run_pending()
         time.sleep(1)
-
 
 # Schedule news to run daily at 09:00
 schedule.every().day.at("09:00").do(news)
